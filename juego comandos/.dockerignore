@@ -1,0 +1,10 @@
+# Al contexto de construcción solo entra lo que usa el Dockerfile.
+*
+!mazmorra/
+!instalar.sh
+!desinstalar.sh
+!docs/guia-alumno.md
+!docker/
+
+**/__pycache__
+**/desktop.ini

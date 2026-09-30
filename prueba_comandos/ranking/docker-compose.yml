@@ -1,0 +1,20 @@
+# Ranking de las pruebas de comandos · SOM
+#   docker compose up -d --build      → web en http://IP-DEL-PROFESOR:8080
+#   Los alumnos ponen esa URL en config.env (SERVIDOR_URL) y la misma CLAVE.
+services:
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      CLAVE: "som-2026"          # debe coincidir con CLAVE en ../config.env
+      CLAVE_ADMIN: "cambia-esto" # para borrar envíos con curl -X DELETE
+    volumes:
+      - ./datos:/datos           # resultados.json queda aquí, fuera del contenedor
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api

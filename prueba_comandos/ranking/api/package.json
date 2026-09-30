@@ -1,0 +1,7 @@
+{
+  "name": "ranking-som-api",
+  "version": "1.0.0",
+  "description": "Servicio de ranking de las pruebas de comandos (SOM). Sin dependencias.",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" }
+}

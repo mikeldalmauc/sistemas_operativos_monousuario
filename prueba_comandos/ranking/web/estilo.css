@@ -1,0 +1,51 @@
+:root {
+  --fondo: #0f1117; --panel: #171a23; --borde: #2a2f3d; --texto: #e6e8ef; --suave: #9aa3b5;
+  --acento: #7c5cff; --oro: #f5c542; --plata: #c0c7d1; --bronce: #d08a4b; --sudo: #ff7a7a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: var(--texto); }
+header { padding: 28px 24px 8px; }
+h1 { margin: 0; font-size: 1.7rem; }
+.sub { margin: 4px 0 0; color: var(--suave); font-size: .9rem; }
+
+.pestanas { display: flex; gap: 6px; padding: 16px 24px 0; border-bottom: 1px solid var(--borde); }
+.pestana { background: none; border: 1px solid transparent; border-bottom: none; color: var(--suave); padding: 10px 16px; border-radius: 10px 10px 0 0; cursor: pointer; font-size: 1rem; }
+.pestana:hover { color: var(--texto); }
+.pestana.activa { background: var(--panel); border-color: var(--borde); color: var(--texto); font-weight: 600; box-shadow: inset 0 -2px 0 var(--acento); }
+
+.controles { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 14px 24px; color: var(--suave); font-size: .92rem; }
+.controles input[type=search] { background: var(--panel); border: 1px solid var(--borde); color: var(--texto); padding: 7px 10px; border-radius: 8px; min-width: 200px; }
+.controles button { background: var(--panel); border: 1px solid var(--borde); color: var(--texto); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.resumen { margin-left: auto; }
+
+main { padding: 0 24px 40px; }
+table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; }
+th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--borde); }
+th { color: var(--suave); font-weight: 600; font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; }
+tbody tr { cursor: pointer; transition: background .12s; }
+tbody tr:hover { background: #1f2330; }
+td.pos { width: 56px; font-size: 1.1rem; text-align: center; }
+td.puntos { font-weight: 700; color: var(--acento); font-variant-numeric: tabular-nums; }
+td.fecha { color: var(--suave); font-size: .9rem; }
+tr.podio td.nombre { font-weight: 600; }
+tr.podio:nth-child(1) td.puntos { color: var(--oro); }
+tr.podio:nth-child(2) td.puntos { color: var(--plata); }
+tr.podio:nth-child(3) td.puntos { color: var(--bronce); }
+.cargando, .vacio { color: var(--suave); text-align: center; padding: 30px; }
+
+/* modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; }
+.modal[hidden] { display: none; }
+.modal-caja { position: relative; background: var(--panel); border: 1px solid var(--borde); border-radius: 14px; width: min(860px, 100%); max-height: 90vh; overflow: auto; padding: 22px 26px; }
+.modal-caja h2 { margin: 0 34px 4px 0; font-size: 1.25rem; }
+.mdatos { color: var(--suave); margin: 0 0 14px; font-size: .92rem; }
+.cerrar { position: absolute; top: 14px; right: 14px; background: none; border: 1px solid var(--borde); color: var(--texto); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; }
+.comandos { margin: 0; padding-left: 2.4em; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .9rem; line-height: 1.7; }
+.comandos li::marker { color: var(--suave); }
+.comandos code { white-space: pre-wrap; word-break: break-all; }
+.comandos li.sudo code { color: var(--sudo); }
+
+@media (max-width: 640px) {
+  th:nth-child(6), td:nth-child(6) { display: none; }
+  .pestana { padding: 8px 10px; font-size: .9rem; }
+}

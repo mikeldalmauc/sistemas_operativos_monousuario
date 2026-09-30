@@ -1,0 +1,26 @@
+# La Mazmorra de los Comandos en un contenedor.
+#
+#   docker compose up -d --build        construir y arrancar
+#   docker compose exec juego bash      abrir un terminal para jugar
+#   docker compose down                 parar (la partida se conserva)
+#   docker compose down -v              parar y BORRAR la partida
+#
+# Se puede abrir más de un terminal a la vez remirpitiendo el exec.
+
+name: mazmorra
+
+services:
+  juego:
+    build: .
+    image: mazmorra-juego
+    container_name: mazmorra
+    hostname: mint-smr
+    stdin_open: true
+    tty: true
+    volumes:
+      # Volumen con nombre y no una carpeta de Windows: el nivel 2 necesita
+      # permisos reales de Linux (chmod) y en una carpeta de Windows no existen.
+      - hogar:/home/alumno
+
+volumes:
+  hogar:

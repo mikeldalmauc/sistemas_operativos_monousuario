@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ranking · Pruebas de comandos</title>
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <header>
+    <h1>⌨ Ranking de las pruebas de comandos</h1>
+    <p class="sub">Sistemas Operativos Monopuesto · puntos = 100000 / (segundos + 5·comandos + 60)</p>
+  </header>
+
+  <nav class="pestanas" role="tablist">
+    <button class="pestana activa" data-nivel="1" role="tab">Nivel 1 · Ficheros</button>
+    <button class="pestana" data-nivel="2" role="tab">Nivel 2 · Usuarios y servicios</button>
+    <button class="pestana" data-nivel="3" role="tab">Nivel 3 · Buscar y scripts</button>
+  </nav>
+
+  <section class="controles">
+    <label><input type="checkbox" id="soloMejor"> Solo el mejor intento de cada alumno</label>
+    <input type="search" id="filtro" placeholder="Filtrar por nombre…">
+    <span id="resumen" class="resumen"></span>
+    <button id="recargar" title="Recargar">⟳</button>
+  </section>
+
+  <main>
+    <table id="tabla">
+      <thead>
+        <tr><th>#</th><th>Alumno</th><th>Puntos</th><th>Tiempo</th><th>Comandos</th><th>Fecha</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="vacio" class="vacio" hidden>Todavía no hay envíos en este nivel. ¡Sé el primero!</p>
+  </main>
+
+  <!-- Modal con el histórico de comandos de un envío -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-caja" role="dialog" aria-modal="true">
+      <button class="cerrar" id="cerrar" aria-label="Cerrar">✕</button>
+      <h2 id="mTitulo"></h2>
+      <p id="mDatos" class="mdatos"></p>
+      <ol id="mComandos" class="comandos"></ol>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
