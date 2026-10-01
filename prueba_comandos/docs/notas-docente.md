@@ -136,7 +136,8 @@ docker compose up -d --build     # web + API en http://<tu-IP>:8080
   proyectarla.
 
 Antes de la clase:
-1. Cambia `CLAVE` y `CLAVE_ADMIN` en `docker-compose.yml`; pon la misma `CLAVE` en
+1. En el servidor, copia `ranking/.env.ejemplo` a `ranking/.env` y pon ahí `CLAVE` y `CLAVE_ADMIN`
+   (el `.env` está en `.gitignore`: la clave de admin nunca viaja en el repo). Pon la misma `CLAVE` en
    `config.env` y haz commit.
 2. Pon en `config.env` la IP del equipo del profesor en la red del aula (`SERVIDOR_URL`).
    Las VMs deben poder llegar a ella (NAT de VirtualBox llega a la red del host sin tocar nada;

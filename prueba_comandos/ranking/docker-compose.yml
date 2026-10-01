@@ -1,13 +1,14 @@
 # Ranking de las pruebas de comandos · SOM
-#   docker compose up -d --build      → web en http://IP-DEL-PROFESOR:8080
+#   1. Copia .env.ejemplo a .env y pon tus claves (el .env NO se sube a git).
+#   2. docker compose up -d --build      → web en http://IP-DEL-SERVIDOR:8080
 #   Los alumnos ponen esa URL en config.env (SERVIDOR_URL) y la misma CLAVE.
 services:
   api:
     build: ./api
     restart: unless-stopped
     environment:
-      CLAVE: "som-2026"          # debe coincidir con CLAVE en ../config.env
-      CLAVE_ADMIN: "cambia-esto" # para borrar envíos con curl -X DELETE
+      CLAVE: "${CLAVE:-som-2026}"                                      # igual que CLAVE en ../config.env
+      CLAVE_ADMIN: "${CLAVE_ADMIN:?Falta CLAVE_ADMIN: crea ranking/.env a partir de .env.ejemplo}"
     volumes:
       - ./datos:/datos           # resultados.json queda aquí, fuera del contenedor
 
