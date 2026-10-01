@@ -49,6 +49,7 @@ function leerCuerpo(req) {
   });
 }
 const posicion = r => resultados.filter(x => x.nivel === r.nivel && x.puntos > r.puntos).length + 1;
+const esAdmin = req => CLAVE_ADMIN && (req.headers['x-clave-admin'] || '') === CLAVE_ADMIN;
 
 // ---------- rutas ----------
 async function recibirResultado(req, res) {
@@ -67,6 +68,8 @@ async function recibirResultado(req, res) {
 
   const r = {
     id: crypto.randomBytes(6).toString('hex'),
+    // clave que desbloquea en la web los comandos de ESTE nivel: se gana completándolo
+    clave_ver: crypto.randomBytes(4).toString('hex').toUpperCase().replace(/^(.{4})/, '$1-'),
     nombre, nivel, tiempo_s, num_comandos,
     puntos: puntos(tiempo_s, num_comandos),
     fecha: new Date().toISOString(),
@@ -78,14 +81,14 @@ async function recibirResultado(req, res) {
   resultados.push(r);
   guardar();
   console.log(`[envío] nivel ${nivel} · ${nombre} · ${tiempo_s}s · ${num_comandos} cmd · ${r.puntos} pts`);
-  json(res, 201, { ok: true, id: r.id, puntos: r.puntos, posicion: posicion(r) });
+  json(res, 201, { ok: true, id: r.id, puntos: r.puntos, posicion: posicion(r), clave_ver: r.clave_ver });
 }
 
 function ranking(res, nivel, texto) {
   const lista = resultados
     .filter(r => r.nivel === nivel)
     .sort((a, b) => b.puntos - a.puntos || a.tiempo_s - b.tiempo_s || a.fecha.localeCompare(b.fecha))
-    .map(({ comandos, ...resto }) => resto);            // sin el histórico, que pesa
+    .map(({ comandos, clave_ver, ...resto }) => resto); // sin el histórico ni la clave
   if (texto) {                                           // ?texto=1 → tabla para la terminal (admin.sh)
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end(lista.map((r, i) => `${String(i + 1).padStart(3)}  ${r.id}  ${String(r.puntos).padStart(5)} pts  ${String(r.tiempo_s).padStart(5)} s  ${String(r.num_comandos).padStart(3)} cmd  ${r.fecha.slice(0, 16).replace('T', ' ')}  ${r.nombre}`).join('\n') + (lista.length ? '\n' : ''));
@@ -93,12 +96,19 @@ function ranking(res, nivel, texto) {
   json(res, 200, lista);
 }
 
-function detalle(res, id) {
-  const r = resultados.find(x => x.id === id);
-  r ? json(res, 200, r) : json(res, 404, { error: 'no existe' });
+// Los comandos de un envío solo se ven con una clave válida de ese nivel (la gana quien lo completa) o con la de admin.
+function claveValida(nivel, clave) {
+  clave = String(clave || '').trim().toUpperCase().replace(/[^0-9A-F]/g, '');
+  if (clave.length !== 8) return false;
+  return resultados.some(r => r.nivel === nivel && r.clave_ver && r.clave_ver.replace('-', '') === clave);
 }
-
-const esAdmin = req => CLAVE_ADMIN && (req.headers['x-clave-admin'] || '') === CLAVE_ADMIN;
+function detalle(req, res, id) {
+  const r = resultados.find(x => x.id === id);
+  if (!r) return json(res, 404, { error: 'no existe' });
+  if (!esAdmin(req) && !claveValida(r.nivel, req.headers['x-clave-ver'])) return json(res, 401, { error: 'clave necesaria', nivel: r.nivel });
+  const { clave_ver, ...sinClave } = r;
+  json(res, 200, sinClave);
+}
 
 function borrar(req, res, id) {  // profesor: DELETE /api/resultados/ID con cabecera X-Clave-Admin
   if (!esAdmin(req)) return json(res, 401, { error: 'no autorizado' });
@@ -125,12 +135,12 @@ http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname.replace(/\/+$/, '');
   let m;
-  if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET,POST,DELETE' }); return res.end(); }
+  if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, X-Clave, X-Clave-Ver, X-Clave-Admin', 'Access-Control-Allow-Methods': 'GET,POST,DELETE' }); return res.end(); }
   if (req.method === 'GET'    && p === '/api/salud')                         return json(res, 200, { ok: true, envios: resultados.length });
   if (req.method === 'POST'   && p === '/api/resultados')                    return recibirResultado(req, res);
   if (req.method === 'GET'    && (m = p.match(/^\/api\/ranking\/([123])$/))) return ranking(res, parseInt(m[1], 10), url.searchParams.get('texto'));
   if (req.method === 'DELETE' && p === '/api/resultados')                    return borrarVarios(req, res, url.searchParams);
-  if (req.method === 'GET'    && (m = p.match(/^\/api\/resultados\/(\w+)$/)))return detalle(res, m[1]);
+  if (req.method === 'GET'    && (m = p.match(/^\/api\/resultados\/(\w+)$/)))return detalle(req, res, m[1]);
   if (req.method === 'DELETE' && (m = p.match(/^\/api\/resultados\/(\w+)$/)))return borrar(req, res, m[1]);
   json(res, 404, { error: 'ruta desconocida' });
 }).listen(PUERTO, () => console.log(`Ranking SOM escuchando en :${PUERTO} · ${resultados.length} envíos cargados de ${FICHERO}`));

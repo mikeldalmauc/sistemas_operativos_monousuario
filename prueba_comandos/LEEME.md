@@ -70,6 +70,14 @@ combinar comandos se premia.
 Los resultados se guardan también en `resultados/nivelN_fecha.json`. Si el servidor no está
 disponible, entrega ese fichero en Moodle.
 
+## La clave del nivel
+
+En la web del ranking se ve quién ha hecho qué y en cuánto tiempo, pero **los comandos que usó
+cada uno están cerrados con llave**. Al completar un nivel, `comprobar` te da una clave de ese
+nivel (por ejemplo `7F3A-C21B`); con ella puedes abrir en la web los comandos de cualquier envío
+de ese nivel y comparar tu solución con las demás. Hasta que no lo resuelves tú, no ves cómo lo
+han resuelto otros. `prueba estado` te vuelve a enseñar tus claves.
+
 ## Problemas frecuentes
 
 - **`Permiso denegado` al guardar el nombre o los resultados**: has clonado el repositorio con

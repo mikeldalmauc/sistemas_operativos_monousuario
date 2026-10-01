@@ -15,6 +15,15 @@ docker compose down               # los datos quedan en ./datos/resultados.json
 Configuración: copia `.env.ejemplo` a `.env` y pon ahí `CLAVE` y `CLAVE_ADMIN` (el `.env` no se sube a git). La `CLAVE` debe coincidir con la de
 `../config.env` que usan los alumnos. Detalles (solo profesor) en `../docs/notas-docente.md`, carpeta ignorada por git.
 
+## Clave de nivel (ver comandos)
+
+El ranking es público, pero `GET /api/resultados/ID` (los comandos de un envío) exige la cabecera
+`X-Clave-Ver` con una clave válida **del mismo nivel**. El servidor genera una clave por envío
+completado (`clave_ver`) y la devuelve al script del alumno, que la muestra y la guarda en
+`~/…/claves.txt`. Con `X-Clave-Admin` se ve todo sin clave. Cualquier clave de un nivel abre
+todos los envíos de ese nivel: la idea es "primero resuélvelo, luego mira cómo lo hicieron otros".
+Un alumno puede pasar su clave a otro; eso no se puede impedir técnicamente, es cosa de clase.
+
 ## Borrar envíos
 
 **No edites `datos/resultados.json` a mano**: el servidor lo tiene en memoria y lo sobrescribe con

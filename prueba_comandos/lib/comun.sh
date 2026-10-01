@@ -185,7 +185,17 @@ guardar_resultado() {
   local resp
   if resp="$(curl -sS -m 10 -X POST "$SERVIDOR_URL/api/resultados" -H 'Content-Type: application/json' -H "X-Clave: $CLAVE" --data-binary "@$fich" 2>&1)" \
      && printf '%s' "$resp" | grep -q '"ok":true'; then
-    ok "Enviado al ranking: $resp"
+    local pos clave_ver
+    pos="$(printf '%s' "$resp" | sed -n 's/.*"posicion":\([0-9]*\).*/\1/p')"
+    clave_ver="$(printf '%s' "$resp" | sed -n 's/.*"clave_ver":"\([^"]*\)".*/\1/p')"
+    ok "Enviado al ranking: posición ${pos:-?} del nivel $n"
+    if [ -n "$clave_ver" ]; then
+      echo "nivel$n $clave_ver $(date +%Y-%m-%d)" >> "$DATOS_ALUMNO/claves.txt"   # sobrevive a reiniciar
+      echo
+      echo "  ${C_AMAR}🔑 Clave del nivel $n: ${C_CIAN}$clave_ver${C_FIN}"
+      echo "  Con ella puedes ver en la web los comandos de los envíos de este nivel (los tuyos y los de"
+      echo "  los demás). Guárdala; también la verás con: ${C_CIAN}$PRUEBA_CMD estado${C_FIN}"
+    fi
   else
     aviso "El ranking no ha aceptado el envío ($SERVIDOR_URL): ${resp:-sin respuesta}"
     echo "  Si no puedes arreglarlo, entrega el JSON en Moodle."
@@ -205,4 +215,8 @@ mostrar_estado() {
     fi
   done
   echo; echo "  Resultados guardados: $(ls "$RESULTADOS" 2>/dev/null | wc -l | tr -d ' ')  (en $RESULTADOS)"
+  if [ -s "$DATOS_ALUMNO/claves.txt" ]; then
+    echo "  🔑 Claves para ver comandos en la web (una por nivel completado):"
+    for n in 1 2 3; do c="$(grep "^nivel$n " "$DATOS_ALUMNO/claves.txt" | tail -1 | cut -d' ' -f2)"; [ -n "$c" ] && echo "     nivel $n: ${C_CIAN}$c${C_FIN}"; done
+  fi
 }

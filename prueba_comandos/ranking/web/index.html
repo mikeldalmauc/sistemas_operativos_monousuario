@@ -10,6 +10,7 @@
   <header>
     <h1>⌨ Ranking de las pruebas de comandos</h1>
     <p class="sub">Sistemas Operativos Monopuesto · puntos = 100000 / (segundos + 5·comandos + 60)</p>
+    <p class="sub">🔒 Los comandos de cada envío solo se ven con la <b>clave del nivel</b>, la que te da <code>comprobar</code> al completarlo.</p>
   </header>
 
   <nav class="pestanas" role="tablist">
@@ -23,6 +24,7 @@
     <input type="search" id="filtro" placeholder="Filtrar por nombre…">
     <span id="resumen" class="resumen"></span>
     <button id="recargar" title="Recargar">⟳</button>
+    <button id="olvidarClaves" title="Olvidar las claves guardadas en este navegador" hidden>🔒 olvidar claves</button>
   </section>
 
   <main>
@@ -34,6 +36,21 @@
     </table>
     <p id="vacio" class="vacio" hidden>Todavía no hay envíos en este nivel. ¡Sé el primero!</p>
   </main>
+
+  <!-- Modal para pedir la clave del nivel -->
+  <div id="modalClave" class="modal" hidden>
+    <div class="modal-caja estrecha" role="dialog" aria-modal="true">
+      <button class="cerrar" id="cerrarClave" aria-label="Cerrar">✕</button>
+      <h2>🔒 Clave del nivel <span id="cNivel"></span></h2>
+      <p class="mdatos">Para ver los comandos de este nivel necesitas la clave que te da <code>comprobar</code> al completarlo
+        (también con <code>prueba estado</code>). Vale cualquier clave de ese nivel, de cualquier intento tuyo.</p>
+      <form id="formClave">
+        <input id="inputClave" type="text" placeholder="7F3A-C21B" autocomplete="off" spellcheck="false" maxlength="9">
+        <button type="submit">Ver comandos</button>
+      </form>
+      <p id="errorClave" class="error" hidden>Clave incorrecta para este nivel.</p>
+    </div>
+  </div>
 
   <!-- Modal con el histórico de comandos de un envío -->
   <div id="modal" class="modal" hidden>

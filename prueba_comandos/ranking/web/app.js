@@ -54,14 +54,50 @@ function pintar() {
   });
 }
 
+// --- claves por nivel (se recuerdan en este navegador) ---
+const claves = { get: n => { try { return localStorage.getItem(`clave_nivel_${n}`) || ''; } catch { return ''; } },
+                 set: (n, v) => { try { localStorage.setItem(`clave_nivel_${n}`, v); } catch {} },
+                 borrar: n => { try { localStorage.removeItem(`clave_nivel_${n}`); } catch {} } };
+let pendiente = null;   // envío que se quería abrir cuando se pidió la clave
+
+function pedirClave(r, pos, error) {
+  pendiente = { r, pos };
+  $('#cNivel').textContent = r.nivel;
+  $('#inputClave').value = '';
+  $('#errorClave').hidden = !error;
+  $('#modalClave').hidden = false;
+  $('#inputClave').focus();
+}
+$('#formClave').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('#inputClave').value.trim().toUpperCase();
+  if (!pendiente || v.length < 8) return;
+  claves.set(pendiente.r.nivel, v);
+  $('#modalClave').hidden = true;
+  abrirModal(pendiente.r, pendiente.pos);
+});
+$('#cerrarClave').addEventListener('click', () => { $('#modalClave').hidden = true; });
+$('#modalClave').addEventListener('click', e => { if (e.target.id === 'modalClave') $('#modalClave').hidden = true; });
+$('#olvidarClaves').addEventListener('click', () => { [1, 2, 3].forEach(claves.borrar); actualizarCandado(); });
+function actualizarCandado() { $('#olvidarClaves').hidden = ![1, 2, 3].some(n => claves.get(n)); }
+
 async function abrirModal(r, pos) {
+  const clave = claves.get(r.nivel);
+  if (!clave) return pedirClave(r, pos, false);
   $('#mTitulo').textContent = `${medalla(pos)} ${r.nombre} · Nivel ${r.nivel}`;
   $('#mDatos').textContent = `${r.puntos} puntos · ${tiempo(r.tiempo_s)} · ${r.num_comandos} comandos · ${fecha(r.fecha)}` + (r.usuario ? ` · usuario ${r.usuario}` : '');
   const ol = $('#mComandos');
   ol.innerHTML = '<li class="cargando">Cargando…</li>';
   $('#modal').hidden = false;
   try {
-    const det = await (await fetch(`${API}/resultados/${r.id}`)).json();
+    const resp = await fetch(`${API}/resultados/${r.id}`, { headers: { 'X-Clave-Ver': clave } });
+    if (resp.status === 401) {            // clave caducada o falsa: se olvida y se vuelve a pedir
+      claves.borrar(r.nivel); actualizarCandado();
+      $('#modal').hidden = true;
+      return pedirClave(r, pos, true);
+    }
+    const det = await resp.json();
+    actualizarCandado();
     ol.innerHTML = '';
     (det.comandos || []).forEach(c => {
       const li = document.createElement('li');
@@ -92,5 +128,6 @@ $('#cerrar').addEventListener('click', cerrarModal);
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') cerrarModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
 
+actualizarCandado();
 cargar();
 setInterval(cargar, 30000);   // se refresca solo cada 30 s (para proyectarlo en clase)
