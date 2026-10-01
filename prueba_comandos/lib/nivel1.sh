@@ -68,7 +68,8 @@ Cuando creas que has terminado, ejecuta `comprobar`. Puedes ejecutarlo tantas ve
  7. Con nano, edita  datos/config.ini  y cambia  modo=lento  por  modo=rapido .
  8. Elimina por completo la carpeta  basura/  y el fichero  datos/borrame.tmp .
  9. Añade al final de  /etc/hosts  la línea      127.0.0.1 prueba.local
-    (es un fichero del sistema: necesitas sudo).
+    (es un fichero del sistema: necesitas sudo. Ojo: `sudo echo ... >> fichero` NO funciona;
+    piensa quién hace la redirección. Pista: nano, o tee -a).
 
 Puntuación: 100000 / (segundos + 5·comandos + 60). Menos tiempo y menos comandos = más puntos.
 EOF

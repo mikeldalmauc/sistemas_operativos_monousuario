@@ -17,12 +17,18 @@ titulo(){ echo; echo "${C_MAG}════════════════�
 # ---------- rutas ----------
 dir_nivel()   { echo "$HOME/prueba_nivel$1"; }
 dir_estado()  { echo "$(dir_nivel "$1")/.prueba"; }
+# Cómo se invoca la prueba en los mensajes: `prueba` si está instalada (instalar.sh), si no `bash prueba.sh`
+if [ "$(command -v prueba 2>/dev/null)" ] && grep -qs "$PRUEBA_RAIZ/prueba.sh" "$(command -v prueba)"; then PRUEBA_CMD="prueba"; else PRUEBA_CMD="bash prueba.sh"; fi
 CONFIG="$PRUEBA_RAIZ/config.env"
-CONFIG_LOCAL="$PRUEBA_RAIZ/config.local.env"
+# Lo que escribe el alumno (su nombre y sus resultados) va en la carpeta del repo si es
+# escribible; si no (p. ej. clonado con sudo), en ~/.prueba_comandos para no bloquear la prueba.
+if [ -w "$PRUEBA_RAIZ" ]; then DATOS_ALUMNO="$PRUEBA_RAIZ"; else DATOS_ALUMNO="$HOME/.prueba_comandos"; fi
+CONFIG_LOCAL="$DATOS_ALUMNO/config.local.env"
+RESULTADOS="$DATOS_ALUMNO/resultados"
 
 requiere_nivel() {
   case "${1:-}" in 1|2|3) return 0 ;; esac
-  error "Indica el nivel: 1, 2 o 3.   Ejemplo:  bash prueba.sh iniciar 1"; exit 1
+  error "Indica el nivel: 1, 2 o 3.   Ejemplo:  $PRUEBA_CMD iniciar 1"; exit 1
 }
 cargar_nivel() { # shellcheck disable=SC1090
   source "$PRUEBA_RAIZ/lib/nivel$1.sh"; }
@@ -40,8 +46,13 @@ pedir_nombre() {
     read -r -p "> " NOMBRE_ALUMNO
     NOMBRE_ALUMNO="$(echo "$NOMBRE_ALUMNO" | sed 's/^ *//;s/ *$//')"
     [ -n "$NOMBRE_ALUMNO" ] || { error "Necesito un nombre."; exit 1; }
-    printf 'NOMBRE_ALUMNO="%s"\n' "$NOMBRE_ALUMNO" > "$CONFIG_LOCAL"
-    ok "Guardado en config.local.env (edítalo si te equivocas)."
+    mkdir -p "$DATOS_ALUMNO" 2>/dev/null
+    if printf 'NOMBRE_ALUMNO="%s"\n' "$NOMBRE_ALUMNO" > "$CONFIG_LOCAL"; then
+      ok "Guardado en $CONFIG_LOCAL (edítalo si te equivocas)."
+    else
+      error "No puedo escribir $CONFIG_LOCAL. ¿Has clonado el repositorio con sudo? Arréglalo con:"
+      echo "    sudo chown -R \$USER:\$USER \"$PRUEBA_RAIZ\""; exit 1
+    fi
   fi
 }
 
@@ -71,7 +82,7 @@ entrar_shell() {
   echo
   PRUEBA_NIVEL="$n" PRUEBA_DIR="$(dir_nivel "$n")" PRUEBA_SH="$PRUEBA_RAIZ/prueba.sh" \
     bash --rcfile "$PRUEBA_RAIZ/lib/rc.sh" -i
-  echo; echo "Has salido de la prueba del nivel $n. Vuelve con:  bash prueba.sh continuar $n"
+  echo; echo "Has salido de la prueba del nivel $n. Vuelve con:  $PRUEBA_CMD continuar $n"
 }
 
 # ---------- comprobación ----------
@@ -140,9 +151,13 @@ comprobar_nivel() {
     aviso "Este intento ya se envió. Para otro intento: ${C_CIAN}reiniciar${C_FIN}"
     return 0
   fi
-  guardar_resultado "$n" "$t" "$ncmd" "$puntos"
-  echo "$t $ncmd $puntos" > "$e/completado"
-  echo "  ¿Puedes hacerlo más rápido y con menos comandos? ${C_CIAN}reiniciar${C_FIN} y otra vez."
+  if guardar_resultado "$n" "$t" "$ncmd" "$puntos"; then
+    echo "$t $ncmd $puntos" > "$e/completado"
+    echo "  ¿Puedes hacerlo más rápido y con menos comandos? ${C_CIAN}reiniciar${C_FIN} y otra vez."
+  else
+    echo "  Arregla lo de arriba y vuelve a ejecutar ${C_CIAN}comprobar${C_FIN}: el intento no se ha perdido."
+    return 1
+  fi
 }
 
 # ---------- resultados: fichero local + envío al servidor ----------
@@ -152,6 +167,7 @@ json_escapar() { # escapa una cadena para JSON (sin comillas exteriores)
 guardar_resultado() {
   local n="$1" t="$2" ncmd="$3" puntos="$4" e json fecha fich comandos
   e="$(dir_estado "$n")"; cargar_config
+  [ -n "$NOMBRE_ALUMNO" ] || pedir_nombre
   fecha="$(date -Iseconds)"
   comandos="$(grep -vE '^\s*$|^\s*(mision|comprobar|reiniciar|salir|exit|clear|history|estado)\s*$' "$e/historial" \
               | while IFS= read -r l; do printf '"%s",' "$(printf '%s' "$l" | json_escapar)"; done)"
@@ -159,20 +175,21 @@ guardar_resultado() {
   json=$(printf '{"nombre":"%s","nivel":%s,"tiempo_s":%s,"num_comandos":%s,"puntos":%s,"fecha":"%s","usuario":"%s","equipo":"%s","comandos":%s}' \
          "$(printf '%s' "$NOMBRE_ALUMNO" | json_escapar)" "$n" "$t" "$ncmd" "$puntos" "$fecha" \
          "$(id -un)" "$(hostname 2>/dev/null | json_escapar)" "$comandos")
-  mkdir -p "$PRUEBA_RAIZ/resultados"
-  fich="$PRUEBA_RAIZ/resultados/nivel${n}_$(date +%Y%m%d_%H%M%S).json"
-  printf '%s\n' "$json" > "$fich"
-  ok "Resultado guardado en resultados/$(basename "$fich")"
+  mkdir -p "$RESULTADOS" 2>/dev/null || { error "No puedo crear $RESULTADOS."; return 1; }
+  fich="$RESULTADOS/nivel${n}_$(date +%Y%m%d_%H%M%S).json"
+  printf '%s\n' "$json" > "$fich" || { error "No puedo escribir en $RESULTADOS."; return 1; }
+  ok "Resultado guardado en $fich"
   if [ "$ENVIAR" != "si" ]; then aviso "Envío desactivado en config.env (ENVIAR=$ENVIAR)."; return 0; fi
   [ -n "$SERVIDOR_URL" ] || { aviso "No hay SERVIDOR_URL en config.env; no se envía."; return 0; }
   command -v curl >/dev/null || { aviso "No tienes curl instalado; entrega el fichero JSON en Moodle."; return 0; }
   local resp
-  if resp="$(curl -sS -m 10 -X POST "$SERVIDOR_URL/api/resultados" -H 'Content-Type: application/json' -H "X-Clave: $CLAVE" --data-binary "@$fich" 2>&1)"; then
+  if resp="$(curl -sS -m 10 -X POST "$SERVIDOR_URL/api/resultados" -H 'Content-Type: application/json' -H "X-Clave: $CLAVE" --data-binary "@$fich" 2>&1)" \
+     && printf '%s' "$resp" | grep -q '"ok":true'; then
     ok "Enviado al ranking: $resp"
   else
-    aviso "No se pudo enviar al servidor ($SERVIDOR_URL): $resp"
-    echo "  Puedes entregar el JSON en Moodle o reintentar con: bash prueba.sh continuar $n  →  comprobar"
-    rm -f "$e/completado"   # así un próximo `comprobar` reintenta el envío
+    aviso "El ranking no ha aceptado el envío ($SERVIDOR_URL): ${resp:-sin respuesta}"
+    echo "  Si no puedes arreglarlo, entrega el JSON en Moodle."
+    return 1   # el intento no se marca como enviado: un próximo `comprobar` lo reintenta
   fi
 }
 
@@ -187,5 +204,5 @@ mostrar_estado() {
     else echo "  Nivel $n: ${C_AMAR}en curso${C_FIN} ($(formato_tiempo $(( $(date +%s) - $(cat "$e/inicio" 2>/dev/null || date +%s) ))) desde el inicio)"
     fi
   done
-  echo; echo "  Resultados guardados: $(ls "$PRUEBA_RAIZ/resultados" 2>/dev/null | wc -l | tr -d ' ')  (carpeta resultados/)"
+  echo; echo "  Resultados guardados: $(ls "$RESULTADOS" 2>/dev/null | wc -l | tr -d ' ')  (en $RESULTADOS)"
 }

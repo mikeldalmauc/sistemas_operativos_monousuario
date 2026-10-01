@@ -16,3 +16,6 @@ prueba_comandos/ranking/datos/*
 !prueba_comandos/ranking/datos/.gitkeep
 prueba_comandos/ranking/.env
 
+
+# Notas del profesor con las soluciones: no se suben
+prueba_comandos/docs/

@@ -12,4 +12,4 @@ docker compose down               # los datos quedan en ./datos/resultados.json
 - `datos/` volumen con `resultados.json`.
 
 Configuración: copia `.env.ejemplo` a `.env` y pon ahí `CLAVE` y `CLAVE_ADMIN` (el `.env` no se sube a git). La `CLAVE` debe coincidir con la de
-`../config.env` que usan los alumnos. Detalles en `../docs/notas-docente.md`.
+`../config.env` que usan los alumnos. Detalles (solo profesor) en `../docs/notas-docente.md`, carpeta ignorada por git.

@@ -21,13 +21,19 @@ Cada nivel da por sabido todo lo de los anteriores.
    git clone <URL-del-repositorio>
    cd sistemas_operativos_monousuario/prueba_comandos
    ```
-2. Comprueba `config.env`: `SERVIDOR_URL` debe ser la dirección que te dé el profesor.
-3. La primera vez que inicies una prueba te pedirá tu nombre (queda en `config.local.env`).
+2. Instala la orden `prueba` (sin sudo) para poder lanzarla desde cualquier carpeta:
+   ```bash
+   bash instalar.sh
+   ```
+   y abre un terminal nuevo. (Si prefieres no instalar nada, `bash prueba.sh …` desde esta
+   carpeta hace exactamente lo mismo.)
+3. Comprueba `config.env`: `SERVIDOR_URL` debe ser la dirección que te dé el profesor.
+4. La primera vez que inicies una prueba te pedirá tu nombre (queda en `config.local.env`).
 
 ## Cómo se juega
 
 ```bash
-bash prueba.sh iniciar 1      # prepara la carpeta ~/prueba_nivel1 y abre el terminal de la prueba
+prueba iniciar 1      # prepara la carpeta ~/prueba_nivel1 y abre el terminal de la prueba
 ```
 
 Se abre un terminal con el prompt `[prueba N1]`. Es tu bash de siempre, con cuatro órdenes extra:
@@ -37,7 +43,7 @@ Se abre un terminal con el prompt `[prueba N1]`. Es tu bash de siempre, con cuat
 | `mision` | Muestra el enunciado (también está en `MISION.md` dentro de la carpeta) |
 | `comprobar` | Revisa paso a paso qué has hecho bien (✔) y qué no (✘). Al completar todo, guarda y envía tu marca |
 | `reiniciar` | Borra tu trabajo, prepara la prueba de nuevo y pone el reloj a cero |
-| `salir` | Sale del terminal de la prueba (el reloj **sigue corriendo**; vuelve con `bash prueba.sh continuar 1`) |
+| `salir` | Sale del terminal de la prueba (el reloj **sigue corriendo**; vuelve con `prueba continuar 1`) |
 
 El reloj empieza en el momento en que la prueba se prepara. **Lee bien el enunciado antes de
 teclear**: cada comando cuenta.
@@ -45,10 +51,10 @@ teclear**: cada comando cuenta.
 Otras órdenes desde fuera:
 
 ```bash
-bash prueba.sh estado        # en qué punto está cada nivel
-bash prueba.sh mision 2      # leer el enunciado sin empezar
-bash prueba.sh reiniciar 2   # empezar de cero un nivel ya empezado
-bash prueba.sh borrar 2      # deshacer TODO lo del nivel (usuarios, servicios, ficheros…)
+prueba estado        # en qué punto está cada nivel
+prueba mision 2      # leer el enunciado sin empezar
+prueba reiniciar 2   # empezar de cero un nivel ya empezado
+prueba borrar 2      # deshacer TODO lo del nivel (usuarios, servicios, ficheros…)
 ```
 
 ## Puntuación
@@ -63,6 +69,19 @@ combinar comandos se premia.
 
 Los resultados se guardan también en `resultados/nivelN_fecha.json`. Si el servidor no está
 disponible, entrega ese fichero en Moodle.
+
+## Problemas frecuentes
+
+- **`Permiso denegado` al guardar el nombre o los resultados**: has clonado el repositorio con
+  `sudo` y la carpeta es de root. Arréglalo: `sudo chown -R $USER:$USER ~/sistemas_operativos_monousuario`
+  (mientras tanto el script guarda tus cosas en `~/.prueba_comandos/`).
+- **`El ranking no ha aceptado el envío`**: lee el motivo entre llaves. `nombre inválido` →
+  revisa `config.local.env`; `clave incorrecta` → `CLAVE` de `config.env` no coincide con la del
+  servidor; sin respuesta → el servidor no está encendido o `SERVIDOR_URL` está mal. Vuelve a
+  ejecutar `comprobar` cuando esté arreglado: el intento no se pierde.
+- **`prueba: orden no encontrada`** tras `bash instalar.sh`: abre un terminal nuevo (o `source ~/.bashrc`).
+- **Nunca clones ni ejecutes la prueba con `sudo`**: `prueba …` siempre como tu usuario.
+  El script pide sudo él solo cuando un paso lo necesita.
 
 ## Consejos
 
