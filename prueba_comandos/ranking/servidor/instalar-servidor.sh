@@ -99,11 +99,15 @@ EOF
   sudo tee /etc/dnsmasq.d/2sma.conf >/dev/null <<EOF
 port=0
 interface=$IFAZ_2SMA
-bind-interfaces
+bind-dynamic
 dhcp-range=$DHCP_RANGO
 dhcp-option=3
 dhcp-option=6
 EOF
+  # que arranque después de que la interfaz tenga IP (si no, falla en el arranque)
+  sudo mkdir -p /etc/systemd/system/dnsmasq.service.d
+  printf '[Unit]\nAfter=network-online.target\nWants=network-online.target\n' | sudo tee /etc/systemd/system/dnsmasq.service.d/esperar-red.conf >/dev/null
+  sudo systemctl daemon-reload
   sudo systemctl enable dnsmasq >/dev/null 2>&1; sudo systemctl restart dnsmasq && ok "dnsmasq reparte $DHCP_RANGO por $IFAZ_2SMA"
   command -v ufw >/dev/null && sudo ufw status | grep -q active && { sudo ufw allow 8080/tcp >/dev/null; sudo ufw allow in on "$IFAZ_2SMA" to any port 67 proto udp >/dev/null; ok "ufw: 8080 y DHCP abiertos"; }
 fi

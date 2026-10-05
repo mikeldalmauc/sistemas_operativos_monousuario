@@ -14,12 +14,16 @@ ENV LANG=C.UTF-8 \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        python3 bash-completion less nano \
+        python3 bash-completion less nano sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # La imagen trae un usuario «ubuntu» con el UID 1000: se cambia por «alumno».
+# Contraseña de «alumno» y de root: «alumno». El alumno puede usar sudo con ella.
 RUN userdel -r ubuntu 2>/dev/null || true \
-    && useradd --create-home --uid 1000 --shell /bin/bash alumno
+    && useradd --create-home --uid 1000 --shell /bin/bash alumno \
+    && echo 'alumno:alumno' | chpasswd \
+    && echo 'root:alumno' | chpasswd \
+    && usermod -aG sudo alumno
 
 COPY mazmorra/ /opt/mazmorra-juego/mazmorra/
 COPY instalar.sh desinstalar.sh docs/guia-alumno.md /opt/mazmorra-juego/

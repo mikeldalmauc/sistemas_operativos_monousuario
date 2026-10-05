@@ -1,0 +1,19 @@
+services:
+
+ # Duplicati
+  duplicati:
+    image: lscr.io/linuxserver/duplicati:latest
+    container_name: duplicati
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Madrid
+      - SETTINGS_ENCRYPTION_KEY={$SETTINGS_ENCRYPTION_KEY}
+      - CLI_ARGS= #optional
+      - DUPLICATI__WEBSERVICE_PASSWORD={$DUPLICATI__WEBSERVICE_PASSWORD} #optional
+    volumes:
+      - ./duplicati:/config
+      - ./micarpetasegura:/source/micarpetasegura
+    ports:
+      - 8200:8200
+    restart: unless-stopped
