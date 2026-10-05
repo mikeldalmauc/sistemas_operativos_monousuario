@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aplicaciones · SMR</title>
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <header>
+    <h1>Aplicaciones</h1>
+    <p class="sub">Sistemas Microinformáticos y Redes · servidor del aula</p>
+  </header>
+  <main id="apps" class="rejilla"></main>
+  <footer>Si una aplicación no responde, avisa al profesor.</footer>
+  <script src="apps.js"></script>
+  <script>
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    document.getElementById('apps').innerHTML = APPS.map(a => `
+      <a class="caja" href="${esc(a.ruta)}">
+        <img src="${esc(a.imagen)}" alt="">
+        <span class="nombre">${esc(a.nombre)}</span>
+        <span class="desc">${esc(a.descripcion || '')}</span>
+      </a>`).join('');
+  </script>
+</body>
+</html>

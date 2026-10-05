@@ -19,7 +19,7 @@
 set -u
 
 # ---------------------------- CONFIGURACIÓN ----------------------------------
-IFAZ_2SMA="${IFAZ_2SMA:-enp2s0}"            # interfaz conectada a la red 2SMA (ip -br a)
+IFAZ_2SMA="${IFAZ_2SMA:-enp3s0}"            # interfaz de la red 2SMA (ip -br a: la que está UP sin IP). Con Default+Wireguard+2SMA es enp3s0
 IP_2SMA="${IP_2SMA:-192.168.2.1/24}"          # IP fija del servidor en 2SMA
 DHCP_RANGO="${DHCP_RANGO:-192.168.2.50,192.168.2.250,12h}"
 REPO_URL="${REPO_URL:-https://github.com/mikeldalmauc/sistemas_operativos_monousuario}"

@@ -1,7 +1,9 @@
 # Ranking de las pruebas de comandos · SOM
 #   1. Copia .env.ejemplo a .env y pon tus claves (el .env NO se sube a git).
-#   2. docker compose up -d --build      → web en http://IP-DEL-SERVIDOR:8080
-#   Los alumnos ponen esa URL en config.env (SERVIDOR_URL) y la misma CLAVE.
+#   2. docker compose up -d --build
+#        portal (puerto 80):  http://IP-DEL-SERVIDOR/                     → cajas con las aplicaciones
+#        ranking:             http://IP-DEL-SERVIDOR/ranking-comandos/    (también directo en :8080)
+#   Los alumnos ponen http://IP-DEL-SERVIDOR/ranking-comandos en config.env (SERVIDOR_URL) y la misma CLAVE.
 services:
   api:
     build: ./api
@@ -16,6 +18,14 @@ services:
     build: ./web
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8080:80"             # acceso directo al ranking (opcional: el portal ya lo sirve en /ranking-comandos/)
     depends_on:
       - api
+
+  portal:                     # reverse proxy + página de inicio con las aplicaciones
+    build: ./portal
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - web

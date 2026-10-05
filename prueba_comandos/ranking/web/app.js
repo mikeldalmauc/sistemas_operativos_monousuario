@@ -1,5 +1,5 @@
 // Ranking · lógica de la web (sin dependencias)
-const API = '/api';
+const API = 'api';   // relativo: funciona en / y bajo /ranking-comandos/
 let nivelActual = 1;
 let datos = [];
 

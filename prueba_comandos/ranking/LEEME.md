@@ -2,13 +2,16 @@
 
 ```bash
 cp .env.ejemplo .env && nano .env  # claves (una sola vez; .env no se sube a git)
-docker compose up -d --build      # → http://<IP-del-profesor>:8080
+docker compose up -d --build      # portal: http://<IP-del-profesor>/   ·   ranking: http://<IP-del-profesor>/ranking-comandos/
 docker compose logs -f api        # ver los envíos llegando
 docker compose down               # los datos quedan en ./datos/resultados.json
 ```
 
+- `portal/` nginx en el puerto 80: página de inicio con una caja por aplicación y reverse proxy
+  (`/ranking-comandos/` → `web`). Para añadir una aplicación: una entrada en `portal/apps.js`, su
+  imagen en `portal/img/` y un bloque `location` en `portal/nginx.conf`.
 - `api/`  servicio Node (sin dependencias) que recibe y sirve los resultados.
-- `web/`  nginx con la web del ranking; hace de proxy de `/api/` hacia `api`.
+- `web/`  nginx con la web del ranking; hace de proxy de `/api/` hacia `api`. Sigue en :8080 por si acaso.
 - `datos/` volumen con `resultados.json`.
 - `admin.sh` administración desde el servidor (ver abajo).
 
