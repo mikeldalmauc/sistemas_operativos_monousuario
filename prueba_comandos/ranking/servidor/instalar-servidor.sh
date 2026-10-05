@@ -13,7 +13,8 @@
 #    3. Docker + compose v2, usuario en el grupo docker
 #    4. ranking: .env con claves, docker compose up
 #    5. terminal: zsh + oh-my-zsh + powerlevel10k + autosugerencias + resaltado + sudo (Esc Esc) + eza (iconos)
-#  Cada paso se puede saltar con SALTAR_RED=1, SALTAR_DOCKER=1, SALTAR_RANKING=1, SALTAR_ZSH=1
+#    6. acceso SSH: las claves públicas de github.com/GITHUB_USER.keys → ~/.ssh/authorized_keys
+#  Cada paso se puede saltar con SALTAR_RED=1, SALTAR_DOCKER=1, SALTAR_RANKING=1, SALTAR_ZSH=1, SALTAR_SSH=1
 # =============================================================================
 set -u
 
@@ -24,6 +25,7 @@ DHCP_RANGO="${DHCP_RANGO:-192.168.2.50,192.168.2.250,12h}"
 REPO_URL="${REPO_URL:-https://github.com/mikeldalmauc/sistemas_operativos_monousuario}"
 REPO_DIR="${REPO_DIR:-$HOME/sistemas_operativos_monousuario}"
 CLAVE_ALUMNOS="${CLAVE_ALUMNOS:-som-2026}"    # debe coincidir con CLAVE en prueba_comandos/config.env
+GITHUB_USER="${GITHUB_USER:-mikeldalmauc}"    # sus claves públicas SSH (github.com/USUARIO.keys) entran en authorized_keys
 # -----------------------------------------------------------------------------
 
 C_V=$'\e[1;32m'; C_A=$'\e[1;33m'; C_R=$'\e[1;31m'; C_M=$'\e[1;35m'; C_F=$'\e[0m'
@@ -37,9 +39,9 @@ sudo -v || { fallo "Necesito sudo."; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 
 # ============================ 1. PAQUETES E IDIOMA ============================
-paso "1/5 Paquetes base e idioma"
+paso "1/6 Paquetes base e idioma"
 sudo apt-get update -qq
-sudo apt-get install -y -qq git curl ca-certificates dnsmasq locales console-setup \
+sudo apt-get install -y -qq git curl ca-certificates dnsmasq locales console-setup openssh-server \
   zsh fzf bat tree htop unzip fonts-powerline zsh-autosuggestions zsh-syntax-highlighting >/dev/null
 # eza (ls con iconos) está en Ubuntu 24.04; si no, se intenta desde su repo oficial
 if ! command -v eza >/dev/null; then
@@ -50,7 +52,8 @@ if ! command -v eza >/dev/null; then
       && sudo apt-get update -qq && sudo apt-get install -y -qq eza >/dev/null || aviso "eza no disponible; se usará ls normal"
   fi
 fi
-ok "Paquetes instalados"
+sudo systemctl enable --now ssh >/dev/null 2>&1 || sudo systemctl enable --now sshd >/dev/null 2>&1
+ok "Paquetes instalados · sshd activo (para el bastión de Isard)"
 
 # Castellano + teclado español
 sudo sed -i 's/^# *es_ES.UTF-8 UTF-8/es_ES.UTF-8 UTF-8/' /etc/locale.gen
@@ -64,7 +67,7 @@ ok "Idioma es_ES.UTF-8 y teclado es (efectivo al volver a entrar)"
 
 # ================================= 2. RED ====================================
 if [ "${SALTAR_RED:-0}" != 1 ]; then
-  paso "2/5 Red: IP fija en $IFAZ_2SMA ($IP_2SMA) y DHCP para los alumnos"
+  paso "2/6 Red: IP fija en $IFAZ_2SMA ($IP_2SMA) y DHCP para los alumnos"
   if ! ip link show "$IFAZ_2SMA" >/dev/null 2>&1; then
     fallo "No existe la interfaz $IFAZ_2SMA. Mira 'ip -br a' y vuelve a lanzar con IFAZ_2SMA=xxx bash $0"; exit 1
   fi
@@ -114,7 +117,7 @@ fi
 
 # ================================ 3. DOCKER ===================================
 if [ "${SALTAR_DOCKER:-0}" != 1 ]; then
-  paso "3/5 Docker y compose v2"
+  paso "3/6 Docker y compose v2"
   command -v docker >/dev/null || sudo apt-get install -y -qq docker.io >/dev/null
   docker compose version >/dev/null 2>&1 || sudo apt-get install -y -qq docker-compose-v2 >/dev/null
   sudo systemctl enable --now docker >/dev/null 2>&1
@@ -124,7 +127,7 @@ fi
 
 # =============================== 4. RANKING ===================================
 if [ "${SALTAR_RANKING:-0}" != 1 ]; then
-  paso "4/5 Ranking (repo, claves y contenedores)"
+  paso "4/6 Ranking (repo, claves y contenedores)"
   if [ -d "$REPO_DIR/.git" ]; then git -C "$REPO_DIR" pull -q && ok "Repo actualizado"; else git clone -q "$REPO_URL" "$REPO_DIR" && ok "Repo clonado en $REPO_DIR"; fi
   R="$REPO_DIR/prueba_comandos/ranking"
   if [ ! -f "$R/.env" ]; then
@@ -140,7 +143,7 @@ fi
 
 # ================================= 5. ZSH ====================================
 if [ "${SALTAR_ZSH:-0}" != 1 ]; then
-  paso "5/5 Terminal: zsh + oh-my-zsh + powerlevel10k"
+  paso "5/6 Terminal: zsh + oh-my-zsh + powerlevel10k"
   OMZ="$HOME/.oh-my-zsh"; ZC="$OMZ/custom"
   [ -d "$OMZ" ] || git clone -q --depth 1 https://github.com/ohmyzsh/ohmyzsh "$OMZ"
   [ -d "$ZC/themes/powerlevel10k" ]        || git clone -q --depth 1 https://github.com/romkatv/powerlevel10k "$ZC/themes/powerlevel10k"
@@ -189,8 +192,36 @@ EOF
   ok "zsh es tu shell. La primera vez que entres arranca el asistente de powerlevel10k (p10k configure)"
 fi
 
+# ============================== 6. CLAVES SSH ================================
+if [ "${SALTAR_SSH:-0}" != 1 ] && [ -n "$GITHUB_USER" ]; then
+  paso "6/6 Acceso SSH: claves públicas del repo (claves_ssh.pub) y de github.com/$GITHUB_USER.keys"
+  mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"; touch "$HOME/.ssh/authorized_keys"; chmod 600 "$HOME/.ssh/authorized_keys"
+  anadir_claves() { # anadir_claves ETIQUETA  (lee claves por stdin)
+    local etq="$1" k n=0 t=0
+    while IFS= read -r k; do
+      case "$k" in ''|'#'*) continue ;; esac
+      t=$((t+1))
+      grep -qF "$(printf '%s' "$k" | awk '{print $2}')" "$HOME/.ssh/authorized_keys" || { echo "$k $etq" >> "$HOME/.ssh/authorized_keys"; n=$((n+1)); }
+    done
+    echo "$t clave(s) en $etq, $n nueva(s) añadida(s)"
+  }
+  AQUI_SRV="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  [ -f "$AQUI_SRV/claves_ssh.pub" ] && ok "$(anadir_claves repo:claves_ssh.pub < "$AQUI_SRV/claves_ssh.pub")"
+  if claves="$(curl -fsS -m 15 "https://github.com/$GITHUB_USER.keys" 2>/dev/null)" && [ -n "$claves" ]; then
+    ok "$(anadir_claves "github:$GITHUB_USER" <<< "$claves")"
+  else
+    aviso "github.com/$GITHUB_USER.keys no disponible (sin claves subidas o sin internet); vale con las del repo"
+  fi
+  ok "authorized_keys tiene ahora $(grep -c . "$HOME/.ssh/authorized_keys") clave(s)"
+fi
+
 # ================================ RESUMEN ====================================
 paso "Resumen"
+echo "  Servicios (deben estar todos 'active' y 'enabled'):"
+for s in NetworkManager dnsmasq docker ssh; do
+  printf '    %-16s %-8s %s\n' "$s" "$(systemctl is-active "$s" 2>/dev/null)" "$(systemctl is-enabled "$s" 2>/dev/null)"
+done
+echo "  Orden de arranque: NetworkManager → (network-online) → dnsmasq · docker → contenedores (restart: unless-stopped)"
 ip -br a | grep -E "^$IFAZ_2SMA" || true
 echo "  Ranking:        http://${IP_2SMA%/*}:8080   (los alumnos: SERVIDOR_URL en config.env)"
 echo "  Claves:         cat $REPO_DIR/prueba_comandos/ranking/.env"

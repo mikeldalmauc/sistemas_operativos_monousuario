@@ -19,8 +19,9 @@ powerlevel10k; en la consola de Isard no hay Nerd Font, así que contesta que **
 | 3 | docker.io + compose v2; tu usuario en el grupo `docker` | `SALTAR_DOCKER=1` |
 | 4 | clona/actualiza el repo, crea `ranking/.env` (CLAVE_ADMIN aleatoria) si no existe, `docker compose up -d --build` | `SALTAR_RANKING=1` |
 | 5 | zsh + oh-my-zsh + powerlevel10k + autosugerencias + resaltado + `sudo` (Esc Esc) + `eza` con iconos + fzf (Ctrl+R) | `SALTAR_ZSH=1` |
+| 6 | `openssh-server` activo y las claves públicas de `github.com/mikeldalmauc.keys` en `~/.ssh/authorized_keys` (para entrar por el bastión de Isard; sube tu `.pub` a GitHub → Settings → SSH keys) | `SALTAR_SSH=1` |
 
 Si la interfaz de 2SMA no es `enp2s0` (míralo con `ip -br a`): `IFAZ_2SMA=enp3s0 bash instalar-servidor.sh`.
-Otras variables: `IP_2SMA`, `DHCP_RANGO`, `REPO_URL`, `CLAVE_ALUMNOS`.
+Otras variables: `IP_2SMA`, `DHCP_RANGO`, `REPO_URL`, `CLAVE_ALUMNOS`, `GITHUB_USER`.
 
 Después: `bash ../admin.sh listar` para administrar, `cat ../.env` para ver las claves.
