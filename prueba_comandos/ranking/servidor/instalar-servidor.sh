@@ -12,7 +12,7 @@
 #    2. red: NetworkManager único gestor, IP fija en la red 2SMA, DHCP (dnsmasq) para los alumnos
 #    3. Docker + compose v2, usuario en el grupo docker
 #    4. ranking: .env con claves, docker compose up
-#    5. terminal: zsh + oh-my-zsh + powerlevel10k + autosugerencias + resaltado + sudo (Esc Esc) + eza (iconos)
+#    5. terminal: bash con alias (eza con iconos, bat), fzf (Ctrl+R) y Esc Esc → sudo
 #    6. acceso SSH: las claves públicas de github.com/GITHUB_USER.keys → ~/.ssh/authorized_keys
 #  Cada paso se puede saltar con SALTAR_RED=1, SALTAR_DOCKER=1, SALTAR_RANKING=1, SALTAR_ZSH=1, SALTAR_SSH=1
 # =============================================================================
@@ -42,7 +42,7 @@ export DEBIAN_FRONTEND=noninteractive
 paso "1/6 Paquetes base e idioma"
 sudo apt-get update -qq
 sudo apt-get install -y -qq git curl ca-certificates dnsmasq locales console-setup openssh-server \
-  zsh fzf bat tree htop unzip fonts-powerline zsh-autosuggestions zsh-syntax-highlighting >/dev/null
+  fzf bat tree htop unzip bash-completion >/dev/null
 # eza (ls con iconos) está en Ubuntu 24.04; si no, se intenta desde su repo oficial
 if ! command -v eza >/dev/null; then
   if ! sudo apt-get install -y -qq eza >/dev/null 2>&1; then
@@ -141,35 +141,21 @@ if [ "${SALTAR_RANKING:-0}" != 1 ]; then
   if curl -sf -m 5 http://localhost:8080/api/salud >/dev/null; then ok "Ranking en marcha: http://${IP_2SMA%/*}:8080"; else fallo "El ranking no responde; mira: cd $R && docker compose logs"; fi
 fi
 
-# ================================= 5. ZSH ====================================
+# ============================ 5. TERMINAL (bash) ==============================
 if [ "${SALTAR_ZSH:-0}" != 1 ]; then
-  paso "5/6 Terminal: zsh + oh-my-zsh + powerlevel10k"
-  OMZ="$HOME/.oh-my-zsh"; ZC="$OMZ/custom"
-  [ -d "$OMZ" ] || git clone -q --depth 1 https://github.com/ohmyzsh/ohmyzsh "$OMZ"
-  [ -d "$ZC/themes/powerlevel10k" ]        || git clone -q --depth 1 https://github.com/romkatv/powerlevel10k "$ZC/themes/powerlevel10k"
-  [ -d "$ZC/plugins/zsh-autosuggestions" ] || git clone -q --depth 1 https://github.com/zsh-users/zsh-autosuggestions "$ZC/plugins/zsh-autosuggestions"
-  [ -d "$ZC/plugins/zsh-syntax-highlighting" ] || git clone -q --depth 1 https://github.com/zsh-users/zsh-syntax-highlighting "$ZC/plugins/zsh-syntax-highlighting"
-  [ -f "$HOME/.zshrc" ] && ! grep -q 'instalar-servidor' "$HOME/.zshrc" && cp "$HOME/.zshrc" "$HOME/.zshrc.antes-$(date +%Y%m%d)"
-  cat > "$HOME/.zshrc" <<'EOF'
-# .zshrc generado por instalar-servidor.sh (ranking SOM). Edita lo que quieras.
-# --- powerlevel10k: arranque instantáneo ---
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="powerlevel10k/powerlevel10k"
-# sudo: pulsa Esc dos veces y añade/quita sudo al principio de la línea
-# zsh-autosuggestions: sugiere en gris el comando del historial; → para aceptarlo
-# zsh-syntax-highlighting: comandos en verde si existen, rojo si no
-# fzf: Ctrl+R busca en el historial, Ctrl+T busca ficheros
-plugins=(git sudo docker docker-compose fzf command-not-found colored-man-pages zsh-autosuggestions zsh-syntax-highlighting)
-source $ZSH/oh-my-zsh.sh
-
+  paso "5/6 Terminal: bash con alias útiles (eza, bat, fzf, Esc Esc → sudo)"
+  # Si queda algún resto de una instalación anterior con zsh, se vuelve a bash
+  [ "$(getent passwd "$(id -un)" | cut -d: -f7)" != "$(command -v bash)" ] && sudo chsh -s "$(command -v bash)" "$(id -un)" && aviso "Shell devuelto a bash (vuelve a entrar)"
+  cat > "$HOME/.bashrc.aula" <<'EOF2'
+# Terminal del servidor del ranking (lo carga ~/.bashrc). Generado por instalar-servidor.sh.
 export LANG=es_ES.UTF-8
 export EDITOR=nano
 export PATH="$HOME/.local/bin:$PATH"
-
-# --- ls con iconos y colores (eza) ---
+# Esc Esc: añade/quita sudo al principio de la línea
+bind '"\e\e": "\C-asudo \C-e"' 2>/dev/null
+# fzf: Ctrl+R busca en el historial, Ctrl+T ficheros
+[ -f /usr/share/doc/fzf/examples/key-bindings.bash ] && source /usr/share/doc/fzf/examples/key-bindings.bash
+# ls con iconos y colores
 if command -v eza >/dev/null; then
   alias ls='eza --icons --group-directories-first'
   alias ll='eza -lah --icons --group-directories-first --git'
@@ -181,15 +167,13 @@ fi
 command -v batcat >/dev/null && alias cat='batcat --paging=never --style=plain'
 alias dc='docker compose'
 alias ranking='cd ~/sistemas_operativos_monousuario/prueba_comandos/ranking'
-
-# --- historial ---
-HISTSIZE=50000; SAVEHIST=50000
-setopt HIST_IGNORE_ALL_DUPS SHARE_HISTORY
-
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-EOF
-  [ "$(getent passwd "$USER" | cut -d: -f7)" = "$(command -v zsh)" ] || sudo chsh -s "$(command -v zsh)" "$USER"
-  ok "zsh es tu shell. La primera vez que entres arranca el asistente de powerlevel10k (p10k configure)"
+# historial grande y compartido entre terminales
+HISTSIZE=50000; HISTFILESIZE=50000; HISTCONTROL=ignoredups; shopt -s histappend
+# prompt: usuario@equipo carpeta (verde/azul), $ en línea aparte
+PS1='\[\e[1;32m\]\u@\h\[\e[0m\] \[\e[1;34m\]\w\[\e[0m\]\n\$ '
+EOF2
+  grep -q '.bashrc.aula' "$HOME/.bashrc" || printf '\n# terminal del aula (instalar-servidor.sh)\n[ -f ~/.bashrc.aula ] && source ~/.bashrc.aula\n' >> "$HOME/.bashrc"
+  ok "bash configurado (~/.bashrc.aula): efectivo en el próximo terminal"
 fi
 
 # ============================== 6. CLAVES SSH ================================
@@ -228,7 +212,6 @@ echo "  Claves:         cat $REPO_DIR/prueba_comandos/ranking/.env"
 echo "  Administrar:    cd $REPO_DIR/prueba_comandos/ranking && bash admin.sh listar"
 echo "  Comprobar DHCP: en un cliente, ip -br a → su interfaz 2SMA debe tener ${IP_2SMA%.*}.x"
 echo
-aviso "Cierra sesión y vuelve a entrar (o reinicia) para que apliquen idioma, teclado, grupo docker y zsh."
-echo "  Nota sobre los iconos: powerlevel10k y eza usan una fuente Nerd Font. En la consola de Isard"
-echo "  no se puede cambiar la fuente, así que en el asistente de p10k contesta que NO ves los iconos"
-echo "  y elige un estilo sin ellos; por SSH desde un equipo con la fuente MesloLGS NF se ven todos."
+aviso "Cierra sesión y vuelve a entrar (o reinicia) para que apliquen idioma, teclado, grupo docker y terminal."
+echo "  Los iconos de eza necesitan una Nerd Font en el terminal (por SSH con MesloLGS NF se ven;"
+echo "  en la consola de Isard salen como cuadrados: usa 'ls --no-icons' o ignóralos)."
