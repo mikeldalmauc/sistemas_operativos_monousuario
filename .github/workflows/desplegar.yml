@@ -1,13 +1,13 @@
 # Despliegue automático del ranking al hacer push a main (opcional).
 # Solo se ejecuta si en el repo (Settings → Secrets and variables → Actions) existen:
 #   Variable  DESPLIEGUE_AUTOMATICO = si
-#   Secrets   DESPLIEGUE_SSH_KEY  (clave privada ed25519 SOLO para esto; su .pub va en ranking/servidor/claves_ssh.pub)
+#   Secrets   DESPLIEGUE_SSH_KEY  (clave privada ed25519 SOLO para esto; su .pub va en el bastión del escritorio en Isard)
 #             DESPLIEGUE_SSH_HOST (vdi.fpzornotzalh.eus)   DESPLIEGUE_SSH_PORT (443)
-#             DESPLIEGUE_SSH_USER (el ID del bastión de Isard)
+#             DESPLIEGUE_SSH_USER (el ID del bastión del escritorio: un UUID, sin espacios ni saltos de línea)
 #   Variable opcional DESPLIEGUE_USUARIO: usuario del servidor dueño del repo y de Docker (por defecto administrador).
-# El bastión de Isard entra con el usuario de las credenciales del escritorio (isard), que no tiene ni el
-# repo ni Docker: por eso desplegar.sh se lanza con sudo como DESPLIEGUE_USUARIO (regla en /etc/sudoers.d,
-# ver ranking/servidor/LEEME.md).
+# El bastión de Isard entra siempre con el usuario de las credenciales del escritorio (isard), que no tiene
+# ni el repo ni Docker: por eso desplegar.sh se lanza con sudo como DESPLIEGUE_USUARIO (regla en
+# /etc/sudoers.d, ver ranking/servidor/LEEME.md).
 name: Desplegar ranking
 on:
   push:
@@ -26,13 +26,19 @@ jobs:
     steps:
       - name: Clave SSH
         run: |
+          # Los secrets pasan por tr: sin espacios ni saltos de línea (el bastión exige un UUID exacto
+          # como usuario y castiga con 10 s + "authentication failed." si no lo es).
+          limpio(){ printf '%s' "$1" | tr -d '[:space:]'; }
+          echo "SSH_USR=$(limpio "${{ secrets.DESPLIEGUE_SSH_USER }}")" >> "$GITHUB_ENV"
+          echo "SSH_HOST=$(limpio "${{ secrets.DESPLIEGUE_SSH_HOST }}")" >> "$GITHUB_ENV"
+          echo "SSH_PORT=$(limpio "${{ secrets.DESPLIEGUE_SSH_PORT }}")" >> "$GITHUB_ENV"
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           # tr quita los \r por si la clave se pegó desde Windows
           printf '%s\n' "${{ secrets.DESPLIEGUE_SSH_KEY }}" | tr -d '\r' > ~/.ssh/despliegue && chmod 600 ~/.ssh/despliegue
-          echo "[${{ secrets.DESPLIEGUE_SSH_HOST }}]:${{ secrets.DESPLIEGUE_SSH_PORT }} $CLAVE_HOST_BASTION" > ~/.ssh/known_hosts
+          echo "[$(limpio "${{ secrets.DESPLIEGUE_SSH_HOST }}")]:$(limpio "${{ secrets.DESPLIEGUE_SSH_PORT }}") $CLAVE_HOST_BASTION" > ~/.ssh/known_hosts
       # desplegar.sh hace el git pull y, si él mismo ha cambiado, se relanza con la versión nueva
       - name: Desplegar por SSH (bastión de Isard)
         run: |
-          ssh -i ~/.ssh/despliegue -p "${{ secrets.DESPLIEGUE_SSH_PORT }}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
-            "${{ secrets.DESPLIEGUE_SSH_USER }}@${{ secrets.DESPLIEGUE_SSH_HOST }}" \
+          ssh -i ~/.ssh/despliegue -p "$SSH_PORT" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "$SSH_USR@$SSH_HOST" \
             "sudo -n -u $USUARIO_SERVIDOR -H /home/$USUARIO_SERVIDOR/sistemas_operativos_monousuario/prueba_comandos/ranking/servidor/desplegar.sh"

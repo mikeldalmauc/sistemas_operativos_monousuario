@@ -36,12 +36,14 @@ Tres formas, de menos a más automática. Todas ejecutan `desplegar.sh` en el se
 3. **GitHub Actions al hacer push a `main`** (`.github/workflows/desplegar.yml`), si cambia algo en
    `prueba_comandos/ranking/`. Llega al servidor por el bastión SSH de Isard. Configuración, una vez:
    - En Windows, una clave **solo para esto**: `ssh-keygen -t ed25519 -f $HOME\.ssh\despliegue -C despliegue-github -N '""'`
-   - La pública (`despliegue.pub`) → una línea más en `claves_ssh.pub` **y** en el servidor
-     (`ssh servidor-som "echo '$(Get-Content $HOME\.ssh\despliegue.pub)' >> ~/.ssh/authorized_keys"`).
-   - En el servidor, como `administrador`. El bastión de Isard entra con el usuario de las
-     *credenciales del escritorio* (`isard`), que no tiene ni el repo ni Docker, así que el workflow
-     lanza `desplegar.sh` con `sudo` como `administrador`. Esta regla se lo permite, solo para ese
-     script y sin contraseña:
+   - La pública (`despliegue.pub`) → una línea más en `claves_ssh.pub` **y en Isard**: escritorio →
+     editar → Bastión → SSH → claves autorizadas. El bastión solo mira las claves de Isard (las del
+     escritorio, la del perfil del usuario y las del despliegue); el `authorized_keys` del servidor
+     no le sirve de nada.
+   - En el servidor, como `administrador`. El bastión de Isard entra siempre con el usuario y la
+     contraseña de las *credenciales del escritorio* (`isard`), que no tiene ni el repo ni Docker,
+     así que el workflow lanza `desplegar.sh` con `sudo` como `administrador`. Esta regla se lo
+     permite, solo para ese script y sin contraseña:
      ```bash
      echo 'isard ALL=(administrador) NOPASSWD: /home/administrador/sistemas_operativos_monousuario/prueba_comandos/ranking/servidor/desplegar.sh' \
        | sudo tee /etc/sudoers.d/despliegue-ranking >/dev/null \
@@ -52,7 +54,7 @@ Tres formas, de menos a más automática. Todas ejecutan `desplegar.sh` en el se
      - Variable `DESPLIEGUE_AUTOMATICO` = `si` (ponla en `no` para pausarlo sin borrar nada).
      - Secrets `DESPLIEGUE_SSH_KEY` (contenido completo de `despliegue`, la privada),
        `DESPLIEGUE_SSH_HOST` = `vdi.fpzornotzalh.eus`, `DESPLIEGUE_SSH_PORT` = `443`,
-       `DESPLIEGUE_SSH_USER` = ID del bastión del escritorio.
+       `DESPLIEGUE_SSH_USER` = ID del bastión del escritorio (un UUID, sin espacios ni saltos de línea).
    - Prueba: pestaña Actions → "Desplegar ranking" → Run workflow. Luego cada push despliega solo.
      El workflow no hace `ssh-keyscan` (el bastión no lo contesta): lleva la clave pública de host
      del bastión fijada en el propio `desplegar.yml`.
