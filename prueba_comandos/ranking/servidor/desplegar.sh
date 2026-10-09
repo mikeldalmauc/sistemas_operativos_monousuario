@@ -16,6 +16,13 @@ ahora="$(git rev-parse --short HEAD)"
 [ "$antes" = "$ahora" ] && ok "Repo ya al día ($ahora)" || ok "Repo actualizado: $antes → $ahora"
 git log --oneline "$antes..$ahora" 2>/dev/null | sed 's/^/    /'
 
+# Si el pull ha cambiado este mismo script, se relanza una vez con la versión nueva.
+if [ "$antes" != "$ahora" ] && [ -z "${DESPLEGAR_RELANZADO:-}" ] \
+   && git diff --name-only "$antes" "$ahora" | grep -q 'ranking/servidor/desplegar.sh$'; then
+  ok "desplegar.sh ha cambiado: relanzo la versión nueva"
+  DESPLEGAR_RELANZADO=1 exec bash "$REPO_DIR/prueba_comandos/ranking/servidor/desplegar.sh"
+fi
+
 [ -f "$R/.env" ] || { fallo "Falta $R/.env (cp .env.ejemplo .env y pon las claves)"; exit 1; }
 cd "$R"
 # compose reconstruye solo las imágenes cuyo contexto ha cambiado y recrea solo los contenedores afectados

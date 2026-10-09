@@ -38,11 +38,23 @@ Tres formas, de menos a más automática. Todas ejecutan `desplegar.sh` en el se
    - En Windows, una clave **solo para esto**: `ssh-keygen -t ed25519 -f $HOME\.ssh\despliegue -C despliegue-github -N '""'`
    - La pública (`despliegue.pub`) → una línea más en `claves_ssh.pub` **y** en el servidor
      (`ssh servidor-som "echo '$(Get-Content $HOME\.ssh\despliegue.pub)' >> ~/.ssh/authorized_keys"`).
+   - En el servidor, como `administrador`. El bastión de Isard entra con el usuario de las
+     *credenciales del escritorio* (`isard`), que no tiene ni el repo ni Docker, así que el workflow
+     lanza `desplegar.sh` con `sudo` como `administrador`. Esta regla se lo permite, solo para ese
+     script y sin contraseña:
+     ```bash
+     echo 'isard ALL=(administrador) NOPASSWD: /home/administrador/sistemas_operativos_monousuario/prueba_comandos/ranking/servidor/desplegar.sh' \
+       | sudo tee /etc/sudoers.d/despliegue-ranking >/dev/null \
+       && sudo chmod 440 /etc/sudoers.d/despliegue-ranking && sudo visudo -cf /etc/sudoers.d/despliegue-ranking
+     ```
+     Si el usuario no es `administrador`, cambia la regla y pon la variable `DESPLIEGUE_USUARIO` en GitHub.
    - En GitHub, repo → Settings → Secrets and variables → Actions:
      - Variable `DESPLIEGUE_AUTOMATICO` = `si` (ponla en `no` para pausarlo sin borrar nada).
      - Secrets `DESPLIEGUE_SSH_KEY` (contenido completo de `despliegue`, la privada),
        `DESPLIEGUE_SSH_HOST` = `vdi.fpzornotzalh.eus`, `DESPLIEGUE_SSH_PORT` = `443`,
        `DESPLIEGUE_SSH_USER` = ID del bastión del escritorio.
    - Prueba: pestaña Actions → "Desplegar ranking" → Run workflow. Luego cada push despliega solo.
+     El workflow no hace `ssh-keyscan` (el bastión no lo contesta): lleva la clave pública de host
+     del bastión fijada en el propio `desplegar.yml`.
    Si el servidor está apagado, el workflow falla y lo verás en rojo en Actions: no pasa nada,
    despliega al siguiente push o con "Run workflow".
