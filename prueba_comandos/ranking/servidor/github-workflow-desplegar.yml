@@ -10,6 +10,10 @@ on:
     branches: [main]
     paths: ['prueba_comandos/ranking/**']
   workflow_dispatch:
+env:
+  # Clave PÚBLICA de host del bastión de Isard (vdi.fpzornotzalh.eus:443). Va fijada aquí porque el
+  # bastión no contesta a ssh-keyscan. Si cambia: ssh-keygen -F '[vdi.fpzornotzalh.eus]:443'
+  CLAVE_HOST_BASTION: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC2zQgkHNTQLG0Wvaoz3CWfrV+vMmQb9r4l6G6abiXM/xbDjY7RhAYqaukqWH/dDjs7tiVfHfVvbMHj97Tm7KYZ0UxVl0vL0OAnxBOedGbQNygiaZw/LzlI6atxxX0FtgftuIEoUy5al9sW+jN91V0zROoB9X8nYQoJVoKtri4lfy92VJCnYmZDsZJ/UzGZ7a+Bmq19nlrJxz33nT+Q/nf6s6dluIYETPtC2UFiLpH6hQa2FUHf3EEIyLptjfc7Pi3T8jgpg5uw80wzOOj/1Ear9cPBjHUjw0t6dxUHJHoYxIhiy3J4m8yt+DGyw3rZQxJU/1iWi6t549ipM3ph6QUTMvpxlZNxDA8way2hCG+uYYee6pV++OiWWNzG5qfUmV7q5ITzIIEsDdAWr+AS3YXh5N9V6tUc35CIyULM7QlA7Pp4vbcGFkIliGTsGFmnM+05SwfOuW4q7Gi2JUmyzubhoEDp+01nwaUObUd4UAPkAhWGQlfccrA6BitZ5bSSHKWQIRQNrUxh/j4m8lw5kmc/IZdMjC7/qgr4lcnb7XvPUAM2nhzgar4xIrKvf1UM4/3iuiUay2wSI20sCjavJXfitFaw65D9vCwMdksxr194fH/Ly6T9dpu6kS6b2B+562WWFTjLF/Cg3e+FnTKhhFWD+kIpK7ywy9f9AorvVGyYgw==
 jobs:
   desplegar:
     if: ${{ vars.DESPLIEGUE_AUTOMATICO == 'si' }}
@@ -18,10 +22,11 @@ jobs:
       - name: Clave SSH
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "${{ secrets.DESPLIEGUE_SSH_KEY }}" > ~/.ssh/despliegue && chmod 600 ~/.ssh/despliegue
-          ssh-keyscan -p "${{ secrets.DESPLIEGUE_SSH_PORT }}" "${{ secrets.DESPLIEGUE_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # tr quita los \r por si la clave se pegó desde Windows
+          printf '%s\n' "${{ secrets.DESPLIEGUE_SSH_KEY }}" | tr -d '\r' > ~/.ssh/despliegue && chmod 600 ~/.ssh/despliegue
+          echo "[${{ secrets.DESPLIEGUE_SSH_HOST }}]:${{ secrets.DESPLIEGUE_SSH_PORT }} $CLAVE_HOST_BASTION" > ~/.ssh/known_hosts
       - name: Desplegar por SSH (bastión de Isard)
         run: |
-          ssh -i ~/.ssh/despliegue -p "${{ secrets.DESPLIEGUE_SSH_PORT }}" -o IdentitiesOnly=yes \
+          ssh -i ~/.ssh/despliegue -p "${{ secrets.DESPLIEGUE_SSH_PORT }}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "${{ secrets.DESPLIEGUE_SSH_USER }}@${{ secrets.DESPLIEGUE_SSH_HOST }}" \
             "bash ~/sistemas_operativos_monousuario/prueba_comandos/ranking/servidor/desplegar.sh"
