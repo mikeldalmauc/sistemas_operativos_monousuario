@@ -12,4 +12,4 @@ if ($Mensaje -ne "") {
 }
 git push
 if ($LASTEXITCODE -ne 0) { Write-Error "git push ha fallado; no despliego."; exit 1 }
-ssh $Servidor "bash ~/sistemas_operativos_monousuario/prueba_comandos/ranking/servidor/desplegar.sh"
+ssh $Servidor "cd ~/sistemas_operativos_monousuario && git pull -q --ff-only && bash prueba_comandos/ranking/servidor/desplegar.sh"

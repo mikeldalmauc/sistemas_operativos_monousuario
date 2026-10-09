@@ -25,8 +25,9 @@ jobs:
           # tr quita los \r por si la clave se pegó desde Windows
           printf '%s\n' "${{ secrets.DESPLIEGUE_SSH_KEY }}" | tr -d '\r' > ~/.ssh/despliegue && chmod 600 ~/.ssh/despliegue
           echo "[${{ secrets.DESPLIEGUE_SSH_HOST }}]:${{ secrets.DESPLIEGUE_SSH_PORT }} $CLAVE_HOST_BASTION" > ~/.ssh/known_hosts
+      # git pull antes del script: así funciona aunque el servidor aún no tenga desplegar.sh y siempre corre la versión nueva
       - name: Desplegar por SSH (bastión de Isard)
         run: |
           ssh -i ~/.ssh/despliegue -p "${{ secrets.DESPLIEGUE_SSH_PORT }}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "${{ secrets.DESPLIEGUE_SSH_USER }}@${{ secrets.DESPLIEGUE_SSH_HOST }}" \
-            "bash ~/sistemas_operativos_monousuario/prueba_comandos/ranking/servidor/desplegar.sh"
+            "cd ~/sistemas_operativos_monousuario && git pull -q --ff-only && bash prueba_comandos/ranking/servidor/desplegar.sh"

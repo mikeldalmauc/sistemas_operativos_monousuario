@@ -30,7 +30,7 @@ Después: `bash ../admin.sh listar` para administrar, `cat ../.env` para ver las
 Tres formas, de menos a más automática. Todas ejecutan `desplegar.sh` en el servidor: `git pull`,
 `docker compose up -d --build` (solo reconstruye lo que cambió) y comprobación de `/api/salud`.
 
-1. **A mano, por SSH**: `ssh servidor-som 'bash ~/sistemas_operativos_monousuario/prueba_comandos/ranking/servidor/desplegar.sh'`
+1. **A mano, por SSH**: `ssh servidor-som 'cd ~/sistemas_operativos_monousuario && git pull --ff-only && bash prueba_comandos/ranking/servidor/desplegar.sh'`
 2. **Desde Windows en un paso**: `.\prueba_comandos\ranking\servidor\desplegar.ps1 "mensaje del commit"`
    → `git add -A`, commit, push y despliegue (sin mensaje solo despliega).
 3. **GitHub Actions al hacer push a `main`** (`.github/workflows/desplegar.yml`), si cambia algo en
