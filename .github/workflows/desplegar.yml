@@ -1,0 +1,27 @@
+# Despliegue automático del ranking al hacer push a main (opcional).
+# Solo se ejecuta si en el repo (Settings → Secrets and variables → Actions) existen:
+#   Variable  DESPLIEGUE_AUTOMATICO = si
+#   Secrets   DESPLIEGUE_SSH_KEY  (clave privada ed25519 SOLO para esto; su .pub va en ranking/servidor/claves_ssh.pub)
+#             DESPLIEGUE_SSH_HOST (vdi.fpzornotzalh.eus)   DESPLIEGUE_SSH_PORT (443)
+#             DESPLIEGUE_SSH_USER (el ID del bastión de Isard)
+name: Desplegar ranking
+on:
+  push:
+    branches: [main]
+    paths: ['prueba_comandos/ranking/**']
+  workflow_dispatch:
+jobs:
+  desplegar:
+    if: ${{ vars.DESPLIEGUE_AUTOMATICO == 'si' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clave SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DESPLIEGUE_SSH_KEY }}" > ~/.ssh/despliegue && chmod 600 ~/.ssh/despliegue
+          ssh-keyscan -p "${{ secrets.DESPLIEGUE_SSH_PORT }}" "${{ secrets.DESPLIEGUE_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Desplegar por SSH (bastión de Isard)
+        run: |
+          ssh -i ~/.ssh/despliegue -p "${{ secrets.DESPLIEGUE_SSH_PORT }}" -o IdentitiesOnly=yes \
+            "${{ secrets.DESPLIEGUE_SSH_USER }}@${{ secrets.DESPLIEGUE_SSH_HOST }}" \
+            "bash ~/sistemas_operativos_monousuario/prueba_comandos/ranking/servidor/desplegar.sh"

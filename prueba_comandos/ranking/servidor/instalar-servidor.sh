@@ -9,7 +9,7 @@
 #
 #  Hace, en este orden:
 #    1. paquetes base + idioma castellano + teclado es
-#    2. red: NetworkManager único gestor, IP fija en la red 2SMA, DHCP (dnsmasq) para los alumnos
+#    2. red: NetworkManager único gestor, IP fija en la red 1SMA, DHCP (dnsmasq) para los alumnos
 #    3. Docker + compose v2, usuario en el grupo docker
 #    4. ranking: .env con claves, docker compose up
 #    5. terminal: bash con alias (eza con iconos, bat), fzf (Ctrl+R) y Esc Esc → sudo
@@ -19,8 +19,8 @@
 set -u
 
 # ---------------------------- CONFIGURACIÓN ----------------------------------
-IFAZ_2SMA="${IFAZ_2SMA:-enp3s0}"            # interfaz de la red 2SMA (ip -br a: la que está UP sin IP). Con Default+Wireguard+2SMA es enp3s0
-IP_2SMA="${IP_2SMA:-192.168.2.1/24}"          # IP fija del servidor en 2SMA
+IFAZ_1SMA="${IFAZ_1SMA:-enp3s0}"            # interfaz de la red 1SMA (ip -br a: la que está UP sin IP). Con Default+Wireguard+1SMA es enp3s0
+IP_1SMA="${IP_1SMA:-192.168.2.1/24}"          # IP fija del servidor en 1SMA
 DHCP_RANGO="${DHCP_RANGO:-192.168.2.50,192.168.2.250,12h}"
 REPO_URL="${REPO_URL:-https://github.com/mikeldalmauc/sistemas_operativos_monousuario}"
 REPO_DIR="${REPO_DIR:-$HOME/sistemas_operativos_monousuario}"
@@ -67,9 +67,9 @@ ok "Idioma es_ES.UTF-8 y teclado es (efectivo al volver a entrar)"
 
 # ================================= 2. RED ====================================
 if [ "${SALTAR_RED:-0}" != 1 ]; then
-  paso "2/6 Red: IP fija en $IFAZ_2SMA ($IP_2SMA) y DHCP para los alumnos"
-  if ! ip link show "$IFAZ_2SMA" >/dev/null 2>&1; then
-    fallo "No existe la interfaz $IFAZ_2SMA. Mira 'ip -br a' y vuelve a lanzar con IFAZ_2SMA=xxx bash $0"; exit 1
+  paso "2/6 Red: IP fija en $IFAZ_1SMA ($IP_1SMA) y DHCP para los alumnos"
+  if ! ip link show "$IFAZ_1SMA" >/dev/null 2>&1; then
+    fallo "No existe la interfaz $IFAZ_1SMA. Mira 'ip -br a' y vuelve a lanzar con IFAZ_1SMA=xxx bash $0"; exit 1
   fi
   if command -v nmcli >/dev/null; then
     # NetworkManager como único gestor (evita el doble DHCP de systemd-networkd + NM)
@@ -79,40 +79,42 @@ if [ "${SALTAR_RED:-0}" != 1 ]; then
         printf 'network:\n  version: 2\n  renderer: NetworkManager\n' | sudo tee "$f" >/dev/null ;; esac
     done
     sudo netplan apply 2>/dev/null
-    # perfil de NM para la interfaz 2SMA
+    # perfil de NM para la interfaz 1SMA
     if nmcli -g NAME con show | grep -qx 2sma; then con=2sma
-    else con="$(nmcli -g NAME,DEVICE con show | awk -F: -v d="$IFAZ_2SMA" '$2==d{print $1; exit}')"; fi
-    if [ -z "$con" ]; then sudo nmcli con add type ethernet ifname "$IFAZ_2SMA" con-name 2sma >/dev/null; con=2sma; fi
-    sudo nmcli con mod "$con" connection.id 2sma connection.interface-name "$IFAZ_2SMA" \
-      ipv4.method manual ipv4.addresses "$IP_2SMA" ipv4.never-default yes ipv6.method disabled
-    sudo nmcli con up 2sma >/dev/null && ok "NetworkManager: 2sma = $IP_2SMA (sin puerta de enlace, internet sigue por la otra red)"
+    else con="$(nmcli -g NAME,DEVICE con show | awk -F: -v d="$IFAZ_1SMA" '$2==d{print $1; exit}')"; fi
+    if [ -z "$con" ]; then sudo nmcli con add type ethernet ifname "$IFAZ_1SMA" con-name 2sma >/dev/null; con=2sma; fi
+    sudo nmcli con mod "$con" connection.id 2sma connection.interface-name "$IFAZ_1SMA" \
+      ipv4.method manual ipv4.addresses "$IP_1SMA" ipv4.never-default yes ipv6.method disabled
+    sudo nmcli con up 2sma >/dev/null && ok "NetworkManager: 2sma = $IP_1SMA (sin puerta de enlace, internet sigue por la otra red)"
   else
     # sin NetworkManager: netplan con systemd-networkd
     sudo tee /etc/netplan/60-2sma.yaml >/dev/null <<EOF
 network:
   version: 2
   ethernets:
-    $IFAZ_2SMA:
+    $IFAZ_1SMA:
       dhcp4: false
-      addresses: [$IP_2SMA]
+      addresses: [$IP_1SMA]
 EOF
-    sudo chmod 600 /etc/netplan/60-2sma.yaml; sudo netplan apply && ok "netplan: $IFAZ_2SMA = $IP_2SMA"
+    sudo chmod 600 /etc/netplan/60-2sma.yaml; sudo netplan apply && ok "netplan: $IFAZ_1SMA = $IP_1SMA"
   fi
-  # dnsmasq solo como DHCP (sin DNS), solo por la interfaz 2SMA, sin router ni DNS para los clientes
+  # dnsmasq solo como DHCP (sin DNS), solo por la interfaz 1SMA, sin router ni DNS para los clientes
   sudo tee /etc/dnsmasq.d/2sma.conf >/dev/null <<EOF
 port=0
-interface=$IFAZ_2SMA
+interface=$IFAZ_1SMA
 bind-dynamic
 dhcp-range=$DHCP_RANGO
 dhcp-option=3
 dhcp-option=6
 EOF
+  # bind-dynamic es incompatible con bind-interfaces: si queda alguno de una config anterior, fuera
+  sudo sed -i 's/^bind-interfaces/#bind-interfaces/' /etc/dnsmasq.conf /etc/dnsmasq.d/*.conf 2>/dev/null
   # que arranque después de que la interfaz tenga IP (si no, falla en el arranque)
   sudo mkdir -p /etc/systemd/system/dnsmasq.service.d
   printf '[Unit]\nAfter=network-online.target\nWants=network-online.target\n' | sudo tee /etc/systemd/system/dnsmasq.service.d/esperar-red.conf >/dev/null
   sudo systemctl daemon-reload
-  sudo systemctl enable dnsmasq >/dev/null 2>&1; sudo systemctl restart dnsmasq && ok "dnsmasq reparte $DHCP_RANGO por $IFAZ_2SMA"
-  command -v ufw >/dev/null && sudo ufw status | grep -q active && { sudo ufw allow 8080/tcp >/dev/null; sudo ufw allow in on "$IFAZ_2SMA" to any port 67 proto udp >/dev/null; ok "ufw: 8080 y DHCP abiertos"; }
+  sudo systemctl enable dnsmasq >/dev/null 2>&1; sudo systemctl restart dnsmasq && ok "dnsmasq reparte $DHCP_RANGO por $IFAZ_1SMA"
+  command -v ufw >/dev/null && sudo ufw status | grep -q active && { sudo ufw allow 8080/tcp >/dev/null; sudo ufw allow in on "$IFAZ_1SMA" to any port 67 proto udp >/dev/null; ok "ufw: 8080 y DHCP abiertos"; }
 fi
 
 # ================================ 3. DOCKER ===================================
@@ -138,7 +140,7 @@ if [ "${SALTAR_RANKING:-0}" != 1 ]; then
   mkdir -p "$R/datos"
   ( cd "$R" && sudo docker compose up -d --build 2>&1 | tail -3 )
   sleep 2
-  if curl -sf -m 5 http://localhost:8080/api/salud >/dev/null; then ok "Ranking en marcha: http://${IP_2SMA%/*}:8080"; else fallo "El ranking no responde; mira: cd $R && docker compose logs"; fi
+  if curl -sf -m 5 http://localhost:8080/api/salud >/dev/null; then ok "Ranking en marcha: http://${IP_1SMA%/*}:8080"; else fallo "El ranking no responde; mira: cd $R && docker compose logs"; fi
 fi
 
 # ============================ 5. TERMINAL (bash) ==============================
@@ -206,11 +208,11 @@ for s in NetworkManager dnsmasq docker ssh; do
   printf '    %-16s %-8s %s\n' "$s" "$(systemctl is-active "$s" 2>/dev/null)" "$(systemctl is-enabled "$s" 2>/dev/null)"
 done
 echo "  Orden de arranque: NetworkManager → (network-online) → dnsmasq · docker → contenedores (restart: unless-stopped)"
-ip -br a | grep -E "^$IFAZ_2SMA" || true
-echo "  Ranking:        http://${IP_2SMA%/*}:8080   (los alumnos: SERVIDOR_URL en config.env)"
+ip -br a | grep -E "^$IFAZ_1SMA" || true
+echo "  Ranking:        http://${IP_1SMA%/*}:8080   (los alumnos: SERVIDOR_URL en config.env)"
 echo "  Claves:         cat $REPO_DIR/prueba_comandos/ranking/.env"
 echo "  Administrar:    cd $REPO_DIR/prueba_comandos/ranking && bash admin.sh listar"
-echo "  Comprobar DHCP: en un cliente, ip -br a → su interfaz 2SMA debe tener ${IP_2SMA%.*}.x"
+echo "  Comprobar DHCP: en un cliente, ip -br a → su interfaz 1SMA debe tener ${IP_1SMA%.*}.x"
 echo
 aviso "Cierra sesión y vuelve a entrar (o reinicia) para que apliquen idioma, teclado, grupo docker y terminal."
 echo "  Los iconos de eza necesitan una Nerd Font en el terminal (por SSH con MesloLGS NF se ven;"
